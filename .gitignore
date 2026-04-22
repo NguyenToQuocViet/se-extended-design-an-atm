@@ -1,0 +1,25 @@
+# Build artifacts
+build/
+*.o
+*.obj
+*.exe
+*.out
+atm
+
+# Debug
+*.dSYM/
+core
+core.*
+vgcore.*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Claude Code instructions (local-only)
+CLAUDE.md
+.claude/
