@@ -7,7 +7,7 @@ private:
     std::int64_t cents_;
 public:
     //constructor
-    explicit Money(std::int64_t cents);
+    Money(std::int64_t cents);
     //factory
     static Money fromDollars(double d);
     
