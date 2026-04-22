@@ -1,5 +1,5 @@
-# ATM-OOP Makefile
-# Goal: gom toolchain commands lai de go 'make' la xong.
+# ATM-OOP Makefile (separate compilation)
+# Auto-discovers src/**/*.cpp, compiles each to build/obj/, links to build/atm.
 
 # ---- Config ----
 CXX      := g++
@@ -7,25 +7,42 @@ CXXSTD   := -std=c++20
 WARN     := -Wall -Wextra -Wpedantic
 DEBUG    := -O0 -g
 INCLUDES := -Isrc
-CXXFLAGS := $(CXXSTD) $(WARN) $(DEBUG) $(INCLUDES)
+# -MMD -MP: emit .d files tracking which headers each .cpp depends on.
+# Ket qua: sua header -> chi cac .o lien quan rebuild.
+DEPFLAGS := -MMD -MP
+CXXFLAGS := $(CXXSTD) $(WARN) $(DEBUG) $(INCLUDES) $(DEPFLAGS)
 
 TARGET   := atm
-SRC      := src/main.cpp
 BUILDDIR := build
+OBJDIR   := $(BUILDDIR)/obj
 
-# ---- Default target: chay 'make' khong tham so se chay 'all' ----
+# Discover all .cpp recursively under src/
+SRCS := $(shell find src -name '*.cpp')
+# Map src/foo/bar.cpp -> build/obj/foo/bar.o
+OBJS := $(SRCS:src/%.cpp=$(OBJDIR)/%.o)
+# Dependency files emitted by -MMD
+DEPS := $(OBJS:.o=.d)
+
 .PHONY: all run clean help
 
 all: $(BUILDDIR)/$(TARGET)
 
-$(BUILDDIR)/$(TARGET): $(SRC) $(wildcard src/**/*.hpp) $(wildcard src/*.hpp)
+# ---- Link step ----
+$(BUILDDIR)/$(TARGET): $(OBJS)
 	@mkdir -p $(BUILDDIR)
-	@echo "[CXX] Compiling $(SRC) -> $@"
-	@$(CXX) $(CXXFLAGS) $(SRC) -o $@
-	@echo "[OK]  Built $@"
+	@echo "[LINK] $@"
+	@$(CXX) $(OBJS) -o $@
+	@echo "[OK]   Built $@"
+
+# ---- Compile step (pattern rule) ----
+# $< = first prerequisite (the .cpp), $@ = target (the .o)
+$(OBJDIR)/%.o: src/%.cpp
+	@mkdir -p $(dir $@)
+	@echo "[CXX]  $<"
+	@$(CXX) $(CXXFLAGS) -c $< -o $@
 
 run: $(BUILDDIR)/$(TARGET)
-	@echo "[RUN] ./$(BUILDDIR)/$(TARGET)"
+	@echo "[RUN]  ./$(BUILDDIR)/$(TARGET)"
 	@./$(BUILDDIR)/$(TARGET)
 
 clean:
@@ -34,7 +51,9 @@ clean:
 
 help:
 	@echo "Targets:"
-	@echo "  make         - Compile (alias of 'make all')"
-	@echo "  make run     - Compile + run"
-	@echo "  make clean   - Delete build/ artifacts"
-	@echo "  make help    - This message"
+	@echo "  make         - Compile + link"
+	@echo "  make run     - Compile + link + run"
+	@echo "  make clean   - Delete build/"
+
+# Include auto-generated dependency files (silent if missing)
+-include $(DEPS)
